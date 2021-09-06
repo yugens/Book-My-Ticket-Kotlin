@@ -1,0 +1,135 @@
+plugins {
+    id "com.kdabir.mksrc" version "1.1.1"
+    id("org.jetbrains.kotlin.jvm") version "1.4.32"
+    id("org.jetbrains.kotlin.kapt") version "1.4.32"
+    id("com.github.johnrengelman.shadow") version "6.0.0"
+    id("io.micronaut.application") version "1.5.0"
+    id("org.jetbrains.kotlin.plugin.allopen") version "1.4.32"
+    id 'com.medly.norm' version "$normVersion"
+    id 'jacoco'
+    id "org.jlleitschuh.gradle.ktlint" version "9.2.1"
+}
+
+sourceSets.main.kotlin.srcDirs += "src/main/gen"
+
+version = "0.1"
+group = "com.demo.book"
+
+repositories {
+    mavenCentral()
+}
+
+micronaut {
+    runtime("netty")
+    testRuntime("kotest")
+    processing {
+        incremental(true)
+        annotations("com.demo.book.*")
+    }
+}
+
+dependencies {
+    implementation "io.micronaut:micronaut-http-client"
+    implementation "io.micronaut:micronaut-runtime"
+    implementation "io.micronaut.kotlin:micronaut-kotlin-runtime"
+    implementation "io.micronaut.liquibase:micronaut-liquibase"
+    implementation "io.micronaut.sql:micronaut-jdbc-hikari"
+    implementation "javax.annotation:javax.annotation-api"
+    implementation "org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}"
+    implementation "io.micronaut:micronaut-validation"
+    implementation 'com.medly:ktee:1.0.0'
+    implementation("io.micronaut.security:micronaut-security-annotations")
+    implementation("io.micronaut.security:micronaut-security-jwt")
+    runtimeOnly "ch.qos.logback:logback-classic"
+    runtimeOnly "org.postgresql:postgresql"
+    runtimeOnly "com.fasterxml.jackson.module:jackson-module-kotlin"
+
+    testImplementation "com.fasterxml.jackson.module:jackson-module-kotlin"
+    testImplementation "io.mockk:mockk:1.10.2"
+    testImplementation "org.testcontainers:postgresql"
+    testImplementation "org.testcontainers:testcontainers"
+    testImplementation "com.medly.norm:runtime:$normVersion"
+    testImplementation "com.fasterxml.jackson.module:jackson-module-kotlin"
+
+}
+
+
+application {
+    mainClass.set("com.demo.book.ApplicationKt")
+}
+java {
+    sourceCompatibility = JavaVersion.toVersion("11")
+    targetCompatibility = JavaVersion.toVersion("11")
+}
+
+tasks {
+    compileKotlin {
+        kotlinOptions {
+            jvmTarget = "11"
+        }
+    }
+    compileTestKotlin {
+        kotlinOptions {
+            jvmTarget = "11"
+        }
+    }
+
+    test {
+        finalizedBy jacocoTestReport
+        useJUnitPlatform()
+        testLogging {
+            events "PASSED", "FAILED", "SKIPPED"
+            exceptionFormat "full"
+        }
+    }
+
+    jacocoTestReport {
+        dependsOn test // tests are required to run before generating the report
+        reports {
+            xml.enabled false
+            csv.enabled false
+            html.destination layout.buildDirectory.dir('jacocoHtml').get().asFile
+        }
+    }
+
+    jacocoTestCoverageVerification {
+        violationRules {
+            rule {
+                limit {
+                    minimum = 0.8
+                }
+            }
+        }
+    }
+    check.dependsOn jacocoTestCoverageVerification
+
+    dockerBuild {
+        images = ["${System.env.DOCKER_IMAGE ?: project.name}:$project.version"]
+    }
+
+    dockerBuildNative {
+        images = ["${System.env.DOCKER_IMAGE ?: project.name}:$project.version"]
+    }
+
+    ktlint {
+        filter {
+            exclude { element -> element.file.path.contains("gen/") }
+        }
+    }
+}
+
+norm {
+    jdbcUrl = "jdbc:postgresql://localhost:5432/bmt_db"
+    username = "postgres"
+    password = ""
+    inputDir = file("src/main/sql")
+    outDir = file("src/main/gen")
+    basePath = file("src/main/kotlin/com/demo/book")
+}
+
+task buildWithLint(dependsOn: ['build', 'ktlintCheck'])
+
+task stage(dependsOn: ['assemble', 'clean'])
+
+assemble.mustRunAfter clean

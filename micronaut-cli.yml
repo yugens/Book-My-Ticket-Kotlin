@@ -1,0 +1,6 @@
+applicationType: default
+defaultPackage: com.demo.book.movie
+testFramework: kotest
+sourceLanguage: kotlin
+buildTool: gradle
+features: [ annotation-api, app-name, gradle, http-client, jdbc-hikari, kotest, kotlin, kotlin-application, liquibase, logback, netty-server, postgres, readme, shade, testcontainers, yaml ]
