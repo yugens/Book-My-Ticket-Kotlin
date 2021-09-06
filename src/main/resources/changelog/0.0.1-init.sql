@@ -1,0 +1,8 @@
+CREATE TABLE movies (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR NOT NULL,
+  start_time TIMESTAMPTZ NOT NULL,
+  end_time TIMESTAMPTZ NOT NULL
+);
+
+

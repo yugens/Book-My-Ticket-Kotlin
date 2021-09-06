@@ -1,0 +1,6 @@
+micronaut:
+  security:
+    enabled: false
+    token:
+      jwt:
+        enabled: false
